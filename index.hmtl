@@ -1,1 +1,261 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="UTF-8">
+<title>Blomidentifierare</title>
 
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.10.0"></script>
+<script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@0.8/dist/teachablemachine-image.min.js"></script>
+
+<style>
+
+body{
+    font-family: Arial, Helvetica, sans-serif;
+    background: linear-gradient(135deg,#7ed6df,#e056fd);
+    margin:0;
+    padding:0;
+    text-align:center;
+    color:#222;
+}
+
+header{
+    background:white;
+    padding:25px;
+    box-shadow:0 4px 10px rgba(0,0,0,0.2);
+}
+
+header h1{
+    margin:0;
+    font-size:32px;
+}
+
+.author{
+    font-size:22px;
+    font-weight:bold;
+    color:#6c2bd9;
+}
+
+.container{
+    max-width:900px;
+    margin:auto;
+    padding:30px;
+}
+
+.statusBox{
+    background:white;
+    border-radius:10px;
+    padding:15px;
+    margin-bottom:25px;
+    box-shadow:0 3px 8px rgba(0,0,0,0.15);
+}
+
+.status{
+    font-weight:bold;
+    font-size:18px;
+}
+
+.uploadBox{
+    background:white;
+    padding:25px;
+    border-radius:10px;
+    box-shadow:0 3px 8px rgba(0,0,0,0.15);
+}
+
+input[type=file]{
+    margin:15px;
+}
+
+#preview{
+    max-width:300px;
+    margin-top:20px;
+    border-radius:10px;
+    box-shadow:0 3px 10px rgba(0,0,0,0.2);
+}
+
+.result{
+    margin-top:25px;
+    font-size:22px;
+    font-weight:bold;
+}
+
+.probability{
+    font-size:18px;
+    margin-top:10px;
+}
+
+.predictions{
+    margin-top:20px;
+    text-align:left;
+    display:inline-block;
+}
+
+.predictions div{
+    padding:6px;
+    border-bottom:1px solid #eee;
+}
+
+footer{
+    margin-top:40px;
+    padding:20px;
+    font-size:14px;
+}
+
+button{
+    padding:10px 20px;
+    border:none;
+    border-radius:6px;
+    background:#6c2bd9;
+    color:white;
+    font-size:16px;
+    cursor:pointer;
+}
+
+button:hover{
+    background:#4b1fa8;
+}
+
+</style>
+</head>
+
+
+<body>
+
+<header>
+<h1>Blomidentifierare</h1>
+<div class="author">Anton H TE23C</div>
+</header>
+
+<div class="container">
+
+<div class="statusBox">
+<div class="status">Modellstatus: <span id="status">Laddar modell...</span></div>
+</div>
+
+
+<div class="uploadBox">
+
+<h2>Ladda upp en bild på en blomma</h2>
+
+<input type="file" id="imageUpload" accept="image/*">
+
+<br>
+
+<img id="preview">
+
+<br><br>
+
+<button onclick="predict()">Identifiera blomma</button>
+
+<div class="result" id="result"></div>
+<div class="probability" id="prob"></div>
+
+<div class="predictions" id="allPredictions"></div>
+
+</div>
+
+</div>
+
+<footer>
+AI Blomidentifiering
+</footer>
+
+<script>
+
+let model;
+let maxPredictions;
+
+const statusText = document.getElementById("status");
+
+const modelURL = "./tfjs_model/model.json";
+const metadataURL = "./tfjs_model/metadata.json";
+
+
+async function loadModel(){
+
+try{
+
+statusText.innerText = "Laddar AI-modell...";
+
+model = await tmImage.load(modelURL, metadataURL);
+
+maxPredictions = model.getTotalClasses();
+
+statusText.innerText = "Modellen är laddad ✓";
+
+}
+catch(error){
+
+statusText.innerText = "Fel vid laddning av modell";
+console.error(error);
+
+}
+
+}
+
+loadModel();
+
+
+
+document.getElementById("imageUpload").addEventListener("change", function(event){
+
+const file = event.target.files[0];
+
+const reader = new FileReader();
+
+reader.onload = function(){
+document.getElementById("preview").src = reader.result;
+}
+
+reader.readAsDataURL(file);
+
+});
+
+
+
+async function predict(){
+
+if(!model){
+alert("Modellen är inte laddad ännu.");
+return;
+}
+
+const image = document.getElementById("preview");
+
+if(!image.src){
+alert("Ladda upp en bild först.");
+return;
+}
+
+const prediction = await model.predict(image);
+
+prediction.sort((a,b)=> b.probability - a.probability);
+
+const best = prediction[0];
+
+document.getElementById("result").innerText =
+"Identifierad blomma: " + best.className;
+
+document.getElementById("prob").innerText =
+"Sannolikhet: " + (best.probability*100).toFixed(2) + "%";
+
+
+const list = document.getElementById("allPredictions");
+list.innerHTML = "<h3>Alla sannolikheter</h3>";
+
+prediction.forEach(p => {
+
+const row = document.createElement("div");
+
+row.innerText =
+p.className + " : " + (p.probability*100).toFixed(2) + "%";
+
+list.appendChild(row);
+
+});
+
+}
+
+</script>
+
+</body>
+</html>
