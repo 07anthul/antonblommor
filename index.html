@@ -2,327 +2,139 @@
 <html lang="sv">
 <head>
 <meta charset="UTF-8">
-<title>Blomidentifierare</title>
+<title>Blomigenkänning</title>
 
 <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
 
-<script>
-
-let model;
-
-const statusText = document.getElementById("status");
-
-async function loadModel(){
-
-    try{
-
-        statusText.innerText = "Laddar modell...";
-
-        model = await tf.loadLayersModel("./tfjs_model/model.json");
-
-        statusText.innerText = "Modellen är laddad ✓";
-
-    }
-
-    catch(error){
-
-        statusText.innerText = "Fel vid laddning av modell";
-        console.error(error);
-
-    }
-
-}
-
-loadModel();
-
-
-
-document.getElementById("imageUpload").addEventListener("change", function(event){
-
-    const file = event.target.files[0];
-    const reader = new FileReader();
-
-    reader.onload = function(){
-        document.getElementById("preview").src = reader.result;
-    }
-
-    reader.readAsDataURL(file);
-
-});
-
-
-async function predict(){
-
-    if(!model){
-        alert("Modellen är inte laddad ännu.");
-        return;
-    }
-
-    const img = document.getElementById("preview");
-
-    let tensor = tf.browser.fromPixels(img)
-        .resizeNearestNeighbor([224,224])
-        .toFloat()
-        .div(255)
-        .expandDims();
-
-    const prediction = await model.predict(tensor).data();
-
-    console.log(prediction);
-
-    document.getElementById("result").innerText =
-        "Prediktion gjord! Se konsolen för resultat.";
-
-}
-
-</script>
 <style>
-
 body{
-    font-family: Arial, Helvetica, sans-serif;
-    background: linear-gradient(135deg,#7ed6df,#e056fd);
-    margin:0;
-    padding:0;
+    font-family: Arial, sans-serif;
     text-align:center;
-    color:#222;
+    background:#f4f7f4;
 }
 
-header{
-    background:white;
-    padding:25px;
-    box-shadow:0 4px 10px rgba(0,0,0,0.2);
+h1{
+    margin-top:30px;
 }
 
-header h1{
-    margin:0;
-    font-size:32px;
-}
-
-.author{
-    font-size:22px;
+.credit{
+    font-size:20px;
     font-weight:bold;
-    color:#6c2bd9;
+    margin-bottom:20px;
 }
 
-.container{
-    max-width:900px;
-    margin:auto;
-    padding:30px;
-}
-
-.statusBox{
-    background:white;
-    border-radius:10px;
+#statusBox{
+    border:2px solid #333;
+    display:inline-block;
     padding:15px;
-    margin-bottom:25px;
-    box-shadow:0 3px 8px rgba(0,0,0,0.15);
-}
-
-.status{
-    font-weight:bold;
-    font-size:18px;
-}
-
-.uploadBox{
+    margin:20px;
     background:white;
-    padding:25px;
-    border-radius:10px;
-    box-shadow:0 3px 8px rgba(0,0,0,0.15);
-}
-
-input[type=file]{
-    margin:15px;
 }
 
 #preview{
     max-width:300px;
     margin-top:20px;
-    border-radius:10px;
-    box-shadow:0 3px 10px rgba(0,0,0,0.2);
 }
 
-.result{
-    margin-top:25px;
+#result{
     font-size:22px;
-    font-weight:bold;
-}
-
-.probability{
-    font-size:18px;
-    margin-top:10px;
-}
-
-.predictions{
     margin-top:20px;
-    text-align:left;
-    display:inline-block;
 }
-
-.predictions div{
-    padding:6px;
-    border-bottom:1px solid #eee;
-}
-
-footer{
-    margin-top:40px;
-    padding:20px;
-    font-size:14px;
-}
-
-button{
-    padding:10px 20px;
-    border:none;
-    border-radius:6px;
-    background:#6c2bd9;
-    color:white;
-    font-size:16px;
-    cursor:pointer;
-}
-
-button:hover{
-    background:#4b1fa8;
-}
-
 </style>
 </head>
 
-
 <body>
 
-<header>
-<h1>Blomidentifierare</h1>
-<div class="author">Anton H TE23C</div>
-</header>
+<h1>Blomigenkänning</h1>
+<div class="credit">Anton H – TE23C</div>
 
-<div class="container">
-
-<div class="statusBox">
-<div class="status">Modellstatus: <span id="status">Laddar modell...</span></div>
+<div id="statusBox">
+Modellstatus: <span id="status">Laddar modell...</span>
 </div>
 
-
-<div class="uploadBox">
-
-<h2>Ladda upp en bild på en blomma</h2>
+<br>
 
 <input type="file" id="imageUpload" accept="image/*">
 
 <br>
-
 <img id="preview">
 
-<br><br>
-
-<button onclick="predict()">Identifiera blomma</button>
-
-<div class="result" id="result"></div>
-<div class="probability" id="prob"></div>
-
-<div class="predictions" id="allPredictions"></div>
-
-</div>
-
-</div>
-
-<footer>
-AI Blomidentifiering
-</footer>
+<div id="result"></div>
 
 <script>
 
 let model;
-let maxPredictions;
-
 const statusText = document.getElementById("status");
+const resultDiv = document.getElementById("result");
+const preview = document.getElementById("preview");
 
-const modelURL = "./tfjs_model/model.json";
-const metadataURL = "./tfjs_model/metadata.json";
-
+/* Ändra dessa om du har specifika blomklasser */
+const labels = [
+"Flower 1",
+"Flower 2",
+"Flower 3",
+"Flower 4",
+"Flower 5"
+];
 
 async function loadModel(){
 
-try{
-
-statusText.innerText = "Laddar AI-modell...";
-
-model = await tmImage.load(modelURL, metadataURL);
-
-maxPredictions = model.getTotalClasses();
-
-statusText.innerText = "Modellen är laddad ✓";
-
-}
-catch(error){
-
-statusText.innerText = "Fel vid laddning av modell";
-console.error(error);
-
-}
+    try{
+        model = await tf.loadLayersModel("tfjs_model/model.json");
+        statusText.textContent = "Modell laddad ✔";
+    }
+    catch(error){
+        statusText.textContent = "Fel vid laddning av modell ❌";
+        console.error(error);
+    }
 
 }
 
 loadModel();
 
+document.getElementById("imageUpload").addEventListener("change", async function(event){
 
+    const file = event.target.files[0];
 
-document.getElementById("imageUpload").addEventListener("change", function(event){
+    if(!file || !model){
+        return;
+    }
 
-const file = event.target.files[0];
+    const img = new Image();
+    img.src = URL.createObjectURL(file);
 
-const reader = new FileReader();
+    img.onload = async function(){
 
-reader.onload = function(){
-document.getElementById("preview").src = reader.result;
-}
+        preview.src = img.src;
 
-reader.readAsDataURL(file);
+        const tensor = tf.browser.fromPixels(img)
+            .resizeNearestNeighbor([224,224])
+            .toFloat()
+            .div(255.0)
+            .expandDims();
 
-});
+        const prediction = model.predict(tensor);
+        const data = await prediction.data();
 
+        let maxIndex = 0;
 
+        for(let i=1;i<data.length;i++){
+            if(data[i] > data[maxIndex]){
+                maxIndex = i;
+            }
+        }
 
-async function predict(){
+        const probability = (data[maxIndex]*100).toFixed(2);
 
-if(!model){
-alert("Modellen är inte laddad ännu.");
-return;
-}
+        const label = labels[maxIndex] || "Klass " + maxIndex;
 
-const image = document.getElementById("preview");
+        resultDiv.innerHTML =
+        "Identifierad blomma: <b>" + label + "</b><br>" +
+        "Sannolikhet: <b>" + probability + "%</b>";
 
-if(!image.src){
-alert("Ladda upp en bild först.");
-return;
-}
-
-const prediction = await model.predict(image);
-
-prediction.sort((a,b)=> b.probability - a.probability);
-
-const best = prediction[0];
-
-document.getElementById("result").innerText =
-"Identifierad blomma: " + best.className;
-
-document.getElementById("prob").innerText =
-"Sannolikhet: " + (best.probability*100).toFixed(2) + "%";
-
-
-const list = document.getElementById("allPredictions");
-list.innerHTML = "<h3>Alla sannolikheter</h3>";
-
-prediction.forEach(p => {
-
-const row = document.createElement("div");
-
-row.innerText =
-p.className + " : " + (p.probability*100).toFixed(2) + "%";
-
-list.appendChild(row);
+    }
 
 });
-
-}
 
 </script>
 
