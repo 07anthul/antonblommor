@@ -4,9 +4,78 @@
 <meta charset="UTF-8">
 <title>Blomidentifierare</title>
 
-<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.10.0"></script>
-<script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@0.8/dist/teachablemachine-image.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
 
+<script>
+
+let model;
+
+const statusText = document.getElementById("status");
+
+async function loadModel(){
+
+    try{
+
+        statusText.innerText = "Laddar modell...";
+
+        model = await tf.loadLayersModel("./tfjs_model/model.json");
+
+        statusText.innerText = "Modellen är laddad ✓";
+
+    }
+
+    catch(error){
+
+        statusText.innerText = "Fel vid laddning av modell";
+        console.error(error);
+
+    }
+
+}
+
+loadModel();
+
+
+
+document.getElementById("imageUpload").addEventListener("change", function(event){
+
+    const file = event.target.files[0];
+    const reader = new FileReader();
+
+    reader.onload = function(){
+        document.getElementById("preview").src = reader.result;
+    }
+
+    reader.readAsDataURL(file);
+
+});
+
+
+async function predict(){
+
+    if(!model){
+        alert("Modellen är inte laddad ännu.");
+        return;
+    }
+
+    const img = document.getElementById("preview");
+
+    let tensor = tf.browser.fromPixels(img)
+        .resizeNearestNeighbor([224,224])
+        .toFloat()
+        .div(255)
+        .expandDims();
+
+    const prediction = await model.predict(tensor).data();
+
+    console.log(prediction);
+
+    document.getElementById("result").innerText =
+        "Prediktion gjord! Se konsolen för resultat.";
+
+}
+
+</script>
 <style>
 
 body{
